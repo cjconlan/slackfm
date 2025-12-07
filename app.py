@@ -1,7 +1,10 @@
 import os
+import sys
 import time
 import json
 import pylast
+
+from collections import deque
 
 # pip install pylast
 # pylast/pylast: A Python interface to Last.fm and Libre.fm
@@ -11,9 +14,14 @@ api_keys_file = ".api_app_keys"
 with open(api_keys_file, 'r') as file:
     api_keys = json.load(file)
 
+
+try:
+    USERNAME = sys.argv[1]
+except IndexError:
+    USERNAME = api_keys.get("user")
+
 API_KEY = api_keys.get("key")
 API_SECRET = api_keys.get("secret")
-USERNAME = api_keys.get("user")
 
 
 def get_current_track(api_key, api_secret, username):
@@ -50,13 +58,19 @@ def display(text):
     print(f"{timestamp:<25}{result}")
 
 
-prev = None
+announce = None
+hist = deque(maxlen=2)
 while True:
     try:
         result = get_current_track(API_KEY, API_SECRET, USERNAME)
-        if result != prev:
-            display(result)
-            prev = result
+        hist.append(result)
+        if len(hist) == hist.maxlen and len(set(hist)) == 1:
+            if announce:
+                display(result)
+                announce = False
+        else:
+            announce = True
+        sys.stdout.flush()
         time.sleep(10)
     except KeyboardInterrupt:
         print()
